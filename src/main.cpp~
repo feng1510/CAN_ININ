@@ -1,0 +1,145 @@
+#include <stdio.h>
+#include <ros/ros.h>
+#include <opencv/highgui.h>
+#include <common/TcpGeneral.h>
+#include <in2_control/lateral_control.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <string.h>
+#include <pthread.h>
+
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <linux/can.h>
+#include <linux/can/raw.h>
+#include <linux/can/error.h>
+#include <fcntl.h>
+
+#include <common/VehicleInfo.h>
+
+ros::Publisher vehicle_info;//---publisher
+
+void ReadThread()
+{
+        int s,i;
+	int nbytes;
+	struct sockaddr_can addr;
+	struct can_frame frame;
+	struct ifreq ifr;
+	char *ifname = "can2";
+
+	int setflag,getflag,ret =0;
+	if((s = socket(PF_CAN, SOCK_RAW, CAN_RAW)) < 0) {
+		perror("Error while opening socket");
+
+	}
+
+	strcpy(ifr.ifr_name, ifname);
+	ioctl(s, SIOCGIFINDEX, &ifr);
+
+	addr.can_family  = AF_CAN;
+	addr.can_ifindex = ifr.ifr_ifindex; 
+
+	if(bind(s, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+		perror("Error in socket bind");
+
+	}
+
+	setflag = setflag|O_NONBLOCK;
+	ret = fcntl(s,F_SETFL,setflag);
+	getflag = fcntl(s,F_GETFL,0);
+
+	can_err_mask_t err_mask = CAN_ERR_TX_TIMEOUT |CAN_ERR_BUSOFF;
+	ret = setsockopt(s, SOL_CAN_RAW, CAN_RAW_ERR_FILTER, &err_mask, sizeof(err_mask));
+	if (ret!=0)
+		printf("setsockopt fail\n");
+
+	
+
+        ros::Rate r(100);
+        while(ros::ok()){
+                printf("using %s to read\n", ifname);
+		nbytes = read(s, &frame, sizeof(frame));
+		if (nbytes > 0)
+		 {
+		   if (frame.can_id & CAN_ERR_FLAG)
+		   	printf("error frame\n");
+		   else
+			{
+			   printf("\nID=0x%x DLC=%d \n",frame.can_id,frame.can_dlc);
+			   for (i =0;i<frame.can_dlc;i++)
+				{
+			  	  printf("data[%d]=0x%x \n",i,frame.data[i]);
+				}
+			}
+		 }
+	  ros::spinOnce();
+	  r.sleep();
+	}
+}
+
+
+
+int main(int argc, char** argv)
+{
+  ros::init(argc, argv, "control_node");
+  ros::NodeHandle node;
+
+  pthread_t thread_id;
+  typedef void* (*FUNC)(void*);
+  FUNC callback = (FUNC)&ReadThread;
+  int ret = pthread_create(&thread_id,NULL,callback,NULL);
+  if(ret!=0) return 1;
+	
+        int s;
+	int nbytes;
+	struct sockaddr_can addr;
+	struct can_frame frame;
+	struct ifreq ifr;
+
+	char *ifname = "can2";
+ 
+	if((s = socket(PF_CAN, SOCK_RAW, CAN_RAW)) < 0)
+	{
+		perror("Error while opening socket");
+	}
+
+	strcpy(ifr.ifr_name, ifname);
+	ioctl(s, SIOCGIFINDEX, &ifr);
+	
+	addr.can_family  = AF_CAN;
+	addr.can_ifindex = ifr.ifr_ifindex; 
+
+
+	if(bind(s, (struct sockaddr *)&addr, sizeof(addr)) < 0) 
+	{
+		perror("Error in socket bind");
+	}
+
+	frame.can_id  = 0x123;
+	frame.can_dlc = 8;
+	frame.data[0] = 0x1;
+	frame.data[1] = 0x2;
+	frame.data[2] = 0x3;
+	frame.data[3] = 0x4;
+	frame.data[4] = 0x5;
+	frame.data[5] = 0x6;
+	frame.data[6] = 0x7;
+	frame.data[7] = 0x8;				
+
+
+	ros::Rate loop_rate(1);
+        while(ros::ok()){
+	  printf("using %s to write\n", ifname);
+	  nbytes = write(s, &frame, sizeof(struct can_frame));
+	  ros::spinOnce();
+	  loop_rate.sleep();
+	}
+
+  return 0;
+}

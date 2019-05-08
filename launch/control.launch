@@ -1,0 +1,8 @@
+<launch>
+  
+  <!-- decision and plan node -->
+  <node pkg="in2_control" type="control_node" name="control_node" respawn="true" output="screen">
+
+  </node>
+  
+</launch>

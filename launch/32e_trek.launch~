@@ -1,0 +1,31 @@
+<launch>
+  
+  <!-- rotate, 32e periscan and TREK node -->
+  <node pkg="rotate_32e" type="rotate_32e_node" name="rotate_32e_node" respawn="true" output="screen">
+  </node>
+  
+  <node pkg="in2_velodyne_32e" type="periscan_32e_node" name="periscan_32e_node" respawn="true" output="screen">
+  	<param name="height_nega_coe"  type="double" value="8.0"/>
+	<param name="height_nega_min"  type="double" value="0.08"/>
+	<param name="height_nega_max"  type="double" value="0.25"/>
+
+	<param name="height_posi_coe"  type="double" value="8.0"/>
+	<param name="height_posi_min"  type="double" value="0.18"/>
+	<param name="height_posi_max"  type="double" value="0.22"/>
+
+  	<param name="angle_nega_coe"   type="double" value="8.0"/>
+	<param name="angle_nega_min"   type="double" value="0.05"/>
+	<param name="angle_nega_max"   type="double" value="0.20"/>
+
+  	<param name="angle_posi_coe"   type="double" value="8.0"/>
+	<param name="angle_posi_min"   type="double" value="0.38"/>
+	<param name="angle_posi_max"   type="double" value="0.42"/>
+
+	<param name="deadzone_nega"   type="double" value="3.5"/>
+	<param name="deadzone_posi"   type="double" value="3.5"/>
+  </node>
+  
+  <node pkg="tcp2trek" type="tcp2trek" name="tcp2trek" respawn="true" output="screen">
+  </node>
+  
+</launch>
