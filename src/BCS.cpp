@@ -325,6 +325,7 @@ void BCS::BCS_display(cv::Mat Display) {
         sprintf(title_data[11], "BCS_VehSpdVD : Valid");
     else
         sprintf(title_data[11], "BCS_VehSpdVD : Not Valid");
+
     if(BCS_VehSpd > 240 || BCS_VehSpd < 0)
         sprintf(title_data[12], "BCS_VehSpd : error");
     else
@@ -441,7 +442,7 @@ void BCS::BCS_display(cv::Mat Display) {
     if(BCS_AEBActive)
         sprintf(title_data2[14], "BCS_AEBActive : Active");
     else
-        sprintf(title_data2[14], "BCS_AEBActive : Active");
+        sprintf(title_data2[14], "BCS_AEBActive : Not active");
 
     if(BCS_AEBAvailable)
         sprintf(title_data2[15], "BCS_AEBAvailable : Available");
@@ -451,7 +452,7 @@ void BCS::BCS_display(cv::Mat Display) {
     if(BCS_CDDActive)
         sprintf(title_data2[16], "BCS_CDDActive : Active");
     else
-        sprintf(title_data2[16], "BCS_CDDActive : Active");
+        sprintf(title_data2[16], "BCS_CDDActive : Not active");
     
     if(BCS_CDDAvailable)
         sprintf(title_data2[17], "BCS_CDDAvailable : Available");

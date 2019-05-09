@@ -30,7 +30,7 @@ public:
     
     void steer_control_code();
     void in_steer_auto(EPS& eps);
-    void esc_steer_auto(EPS& eps);
+    void esc_steer_auto();
     //本地回环
     void steer_loop_decode(struct can_frame &frame);
 

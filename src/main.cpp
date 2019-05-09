@@ -26,15 +26,17 @@
 #include <common/VehicleInfo.h>
 
 #include <can/EPS.h>
-#include <can/BCS.h>
 #include <can/VCU.h>
+//#include <can/BCS.h>
 #include <can/ELSE.h>
 #include <can/Steer_control.h>
 #include <can/DrvAutoReq.h>
+#include <can/Drive_control.h>
 
 using namespace std;
 
 ros::Publisher vehicle_info;  //---publisher
+
 char* can2_name = (char*)"can2";
 //char can2_name[] = "can2";
 EPS eps;
@@ -43,6 +45,7 @@ VCU vcu;
 ELSE elseid;
 Steer_control steer_control;
 DrvAutoReq auto_req;
+Drive_control drive_control;
 
 void ReadThread()
 {
@@ -290,6 +293,13 @@ void ReadThread()
 						elseid.GW_BCM_2_P_decode(frame);
 						break;
 					//本地回环
+					case SCU_1:
+						printf("\nID=0x%x DLC=%d \n",frame.can_id,frame.can_dlc);
+						for (i =0;i<frame.can_dlc;i++) {
+							printf("data[%d]=0x%x \n",i,frame.data[i]);
+						}
+						drive_control.drive_loop_decode(frame);
+						break;
 					case SCU_2:
 						printf("\nID=0x%x DLC=%d \n",frame.can_id,frame.can_dlc);
 						for (i =0;i<frame.can_dlc;i++) {
@@ -312,7 +322,17 @@ void remote_msg(const remote_car::car_data& msg) {
 
 	steer_control.angle_input = msg.steering_wheel;
 	auto_req.DrvAuto_flag  = msg.Enter_steering_control;
+	drive_control.AutoTrqWhlReq = msg.accelerator;
+	drive_control.BrakeReq = msg.brake;
+	drive_control.GearReq = msg.gear;
+	drive_control.EmergencyStop = msg.emergency_braking;
+	if(auto_req.DrvAuto_flag == 1)
+		drive_control.DrvModeReq = 3;
+	else
+		drive_control.DrvModeReq = 1;
 
+
+	auto_req.DrvAutoReq_send_flag = true;
 }
 
 
@@ -323,9 +343,10 @@ int main(int argc, char** argv)
 
 	clock_t start;
 	start = clock();
+
 	//opencv显示
 	//opencv显示
-	cv::Mat Display(Size(3200,1600), CV_8UC3, Scalar(255,255,255)); 
+	cv::Mat Display(Size(3200,1600), CV_8UC3, Scalar(255,255,255));
 	namedWindow("display",0);
 
 
@@ -370,42 +391,79 @@ int main(int argc, char** argv)
 	ros::Rate loop_rate(20);
     while(ros::ok()){
 
-
 		// 接收到遥控器进入EPS自动模式的请求
 		if(auto_req.DrvAuto_flag == 1) {
 
+		    drive_control.in_drive_auto(vcu, elseid);
 			steer_control.in_steer_auto(eps);
 
-			//进入EPS自动模式后发送接收到50的方向盘遥控指令
+			//进入EPS自动模式后发送接收到的方向盘遥控指令
 			if(eps.EPS_ControlMode == 2 && eps.EPS_FailureSt == false) {
 				steer_control.steer_control_code();
 				}
+			if(vcu.VCU_DrvModeAct == 3) {
+			    drive_control.drive_control_code();
+			}
+
+			if(drive_control.EmergencyStop == 1) {
+			    drive_control.drive_emergencyStop(bcs);
+			}
+
+            nbytes = write(s, &drive_control.frame, sizeof(struct can_frame));
+
+            printf("\nID=0x%x DLC=%d \n",drive_control.frame.can_id, drive_control.frame.can_dlc);
+            for (int i =0;i<drive_control.frame.can_dlc;i++) {
+                printf("data[%d]=0x%x \n",i,drive_control.frame.data[i]);
+            }
+            if(nbytes != sizeof(drive_control.frame)) //如果nbytes不等于帧长度，就说明发送失败
+                printf("Error\n!");
+
 
 			nbytes = write(s, &steer_control.frame, sizeof(struct can_frame));
-	  		printf("\nID=0x%x DLC=%d \n",steer_control.frame.can_id,frame.can_dlc);
+
+	  		printf("\nID=0x%x DLC=%d \n", steer_control.frame.can_id, steer_control.frame.can_dlc);
 			for (int i =0;i<steer_control.frame.can_dlc;i++) {
-				printf("data[%d]=0x%x \n",i,steer_control.frame.data[i]);
+				printf("data[%d]=0x%x \n",i, steer_control.frame.data[i]);
 				}
 	  		if(nbytes != sizeof(steer_control.frame)) //如果nbytes不等于帧长度，就说明发送失败
 				printf("Error\n!");
+
+
 		}
 
+        //退出自动模式
 		else {
-			
+
+		    //退出驱动的自动模式
+		    if(vcu.VCU_DrvModeAct == 3) {
+		        drive_control.esc_drive_auto();
+
+                nbytes = write(s, &drive_control.frame, sizeof(struct can_frame));
+                printf("\nID=0x%x DLC=%d \n",drive_control.frame.can_id, drive_control.frame.can_dlc);
+                for (int i =0;i<drive_control.frame.can_dlc;i++) {
+                    printf("data[%d]=0x%x \n",i,drive_control.frame.data[i]);
+                }
+                if(nbytes != sizeof(drive_control.frame)) //如果nbytes不等于帧长度，就说明发送失败
+                    printf("Error\n!");
+		    }
+
+		    //退出EPS的自动模式
 			if(eps.EPS_ControlMode == 2 && eps.EPS_FailureSt == false){
 
-				steer_control.esc_steer_auto(eps);
+				steer_control.esc_steer_auto();
 				nbytes = write(s, &steer_control.frame, sizeof(struct can_frame));
-	  			printf("\nID=0x%x DLC=%d \n",steer_control.frame.can_id,frame.can_dlc);
+	  			printf("\nID=0x%x DLC=%d \n",steer_control.frame.can_id, steer_control.frame.can_dlc);
 				for (int i =0;i<steer_control.frame.can_dlc;i++) {
 					printf("data[%d]=0x%x \n",i,steer_control.frame.data[i]);
 					}
 	  			if(nbytes != sizeof(steer_control.frame)) //如果nbytes不等于帧长度，就说明发送失败
 					printf("Error\n!");
 			}
+
 		}
 
 		//大约0.2s刷新一次显示
+
 		 if( (clock() - start) >= 200000) {
 			 start = clock();
 			 Display.setTo(Scalar(255, 255, 255));
@@ -414,11 +472,11 @@ int main(int argc, char** argv)
 			 vcu.VCU_display(Display);
 			 elseid.ELSE_display(Display);
 			 steer_control.steer_control_dis(eps, Display);
-
+             drive_control.drive_control_dis(bcs, vcu, elseid, Display);
              imshow("display", Display);
 	         waitKey(1);
 		 }
-		
+
 	  	ros::spinOnce();
 	  	loop_rate.sleep();
 	}

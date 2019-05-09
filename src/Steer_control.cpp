@@ -20,7 +20,7 @@ Steer_control::Steer_control() {
 
     angle_input = 0;
 
-    frame.can_id = 0x37B;
+    frame.can_id = SCU_2;
     frame.can_dlc = 8;
 	frame.data[0] = 0x0;
 	frame.data[1] = 0x1E;
@@ -52,12 +52,13 @@ void Steer_control::steer_control_code() {
 void Steer_control::in_steer_auto(EPS& eps) {
     if(eps.EPS_ControlMode == 1 && eps.EPS_FailureSt == false){
         frame.data[0] = 0x80;
-        angle_input = 0;
+        frame.data[1] = 0x1E;
+        frame.data[2] = 0x78;
     }
 }
 
-void Steer_control::esc_steer_auto(EPS& eps) {
-        frame.data[0] = 0x0;
+void Steer_control::esc_steer_auto() {
+        frame.data[0] = 0x00;
 	    frame.data[1] = 0x1E;
 	    frame.data[2] = 0x78;
 }
@@ -105,6 +106,8 @@ void Steer_control::steer_control_dis(EPS& eps, cv::Mat Display_control){
 
     sprintf(title_data[4],"SCU_SteerAngReq: %.1f", SCU_SteerAngReq);
 
-    for(int i = 0; i<5; i++)
-        putText(Display_control, title_data[i], Point(2400, 800+50*i), fontFace, fontScale,CV_RGB(255,0,0) , 2*thickness);
+    for(int i = 0; i<3; i++)
+        putText(Display_control, title_data[i], Point(2400, 500+50*i), fontFace, fontScale,CV_RGB(0,0,0) , 2*thickness);
+    for(int i = 3; i<5; i++)
+        putText(Display_control, title_data[i], Point(2400, 500+50*i), fontFace, fontScale,CV_RGB(0,0,255) , 2*thickness);
 }

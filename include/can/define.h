@@ -1,6 +1,14 @@
 #ifndef DEFINE_H
 #define DEFINE_H
 #include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <iostream>
+#include <opencv2/opencv.hpp>
+#include <math.h>
+#include <linux/can.h>
+
+
 
 #define EPS_1_id 0x366
 #define EPS_11_id 0x365

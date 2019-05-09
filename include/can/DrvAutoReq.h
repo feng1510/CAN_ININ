@@ -7,7 +7,6 @@
 #include <opencv2/opencv.hpp>
 #include <math.h>
 #include <linux/can.h>
-
 using namespace std;
 using namespace cv;
 
@@ -18,8 +17,7 @@ public:
     virtual ~DrvAutoReq();   //析构函数
 
     bool DrvAutoReq_send_flag;
-    int16_t  DrvAuto_flag;
-    
+    int16_t DrvAuto_flag;
 
 
 private:

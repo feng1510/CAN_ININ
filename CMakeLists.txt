@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(in2_control)
 
+SET(CMAKE_BUILD_TYPE "Release")
 ## Add support for C++11, supported in ROS Kinetic and newer
 add_definitions(-std=c++11)
 
@@ -135,7 +136,7 @@ add_executable(control_node
   src/VCU.cpp
   include/can/VCU.h
   include/can/define.h
-   ${SRC_FILES} ${libraryHeaders})
+   ${SRC_FILES} ${libraryHeaders} src/Drive_control.cpp include/can/Drive_control.h)
 target_link_libraries(control_node ${catkin_LIBRARIES} ${OpenCV_LIBS})
 
 ## Declare a C++ library
